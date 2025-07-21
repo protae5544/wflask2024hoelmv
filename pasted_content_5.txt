@@ -1,0 +1,322 @@
+project-structure/
+├── package.json
+├── next.config.js
+├── pages/
+│   ├── api/
+│   │   ├── workers/
+│   │   │   ├── index.js
+│   │   │   └── [id].js
+│   │   ├── pdf/
+│   │   │   └── generate.js
+│   │   └── upload.js
+│   ├── index.js
+│   └── worker/
+│       └── [id].js
+├── components/
+│   └── WorkPermitDocument.js
+├── data/
+│   └── combined-data.json
+├── public/
+│   ├── bg5.svg
+│   └── logo.jpg
+└── styles/
+    └── globals.css
+{
+  "name": "work-permit-system",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "puppeteer": "^21.0.0",
+    "qrcode": "^1.5.3",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0"
+  }
+}
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  experimental: {
+    serverComponentsExternalPackages: ['puppeteer']
+  },
+  webpack: (config) => {
+    config.resolve.alias.canvas = false;
+    return config;
+  }
+}
+
+module.exports = nextConfig
+import fs from 'fs';
+import path from 'path';
+
+const dataPath = path.join(process.cwd(), 'data', 'combined-data.json');
+
+// ฟังก์ชันอ่านข้อมูล
+function readData() {
+  try {
+    if (!fs.existsSync(dataPath)) {
+      return [];
+    }
+    const data = fs.readFileSync(dataPath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading data:', error);
+    return [];
+  }
+}
+import fs from 'fs';
+import path from 'path';
+
+const dataPath = path.join(process.cwd(), 'data', 'combined-data.json');
+
+function readData() {
+  try {
+    if (!fs.existsSync(dataPath)) {
+      return [];
+    }
+    const data = fs.readFileSync(dataPath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    return [];
+  }
+}
+
+function writeData(data) {
+  try {
+    const dir = path.dirname(dataPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+export default function handler(req, res) {
+  const { id } = req.query;
+  const data = readData();
+  const workerIndex = data.findIndex(w => w.requestNumber === id);
+
+  if (req.method === 'GET') {
+    if (workerIndex === -1) {
+      return res.status(404).json({ error: 'Worker not found' });
+    }
+    res.status(200).json(data[workerIndex]);
+  } else if (req.method === 'PUT') {
+    if (workerIndex === -1) {
+      return res.status(404).json({ error: 'Worker not found' });
+    }
+    
+    data[workerIndex] = { ...data[workerIndex], ...req.body };
+    if (writeData(data)) {
+      res.status(200).json(data[workerIndex]);
+    } else {
+      res.status(500).json({ error: 'Failed to update data' });
+    }
+  } else if (req.method === 'DELETE') {
+    if (workerIndex === -1) {
+      return res.status(404).json({ error: 'Worker not found' });
+    }
+    
+    const deletedWorker = data.splice(workerIndex, 1)[0];
+    if (writeData(data)) {
+      res.status(200).json(deletedWorker);
+    } else {
+      res.status(500).json({ error: 'Failed to delete data' });
+    }
+  } else {
+    res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+}
+
+// ฟังก์ชันเขียนข้อมูล
+function writeData(data) {
+  try {
+    const dir = path.dirname(dataPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Error writing data:', error);
+    return false;
+  }
+}
+
+export default function handler(req, res) {
+  if (req.method === 'GET') {
+    const data = readData();
+    res.status(200).json(data);
+  } else if (req.method === 'POST') {
+    const newWorker = req.body;
+    const data = readData();
+    
+    // ตรวจสอบ requestNumber ซ้ำ
+    if (data.find(w => w.requestNumber === newWorker.requestNumber)) {
+      return res.status(400).json({ error: 'Request number already exists' });
+    }
+    
+    data.push(newWorker);
+    if (writeData(data)) {
+      res.status(201).json(newWorker);
+    } else {
+      res.status(500).json({ error: 'Failed to save data' });
+    }
+  } else {
+    res.setHeader('Allow', ['GET', 'POST']);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+}
+import { useRouter } from 'next/router';
+import { useState, useEffect } from 'react';
+
+export default function WorkerPage() {
+  const router = useRouter();
+  const { id } = router.query;
+  const [worker, setWorker] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (id) {
+      fetchWorker();
+    }
+  }, [id]);
+
+  const fetchWorker = async () => {
+    try {
+      const response = await fetch(`/api/workers/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setWorker(data);
+      } else {
+        console.error('Worker not found');
+      }
+    } catch (error) {
+      console.error('Error fetching worker:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">กำลังโหลด...</div>;
+  }
+
+  if (!worker) {
+    return <div className="flex items-center justify-center min-h-screen">ไม่พบข้อมูล</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-4">
+      <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+        <div className="text-center mb-4">
+          <img 
+            src={worker.profileImage || 'https://via.placeholder.com/150?text=No+Image'} 
+            alt="Profile" 
+            className="w-32 h-32 mx-auto rounded-lg object-cover mb-4"
+          />
+          <h1 className="text-xl font-bold">{worker.englishName}</h1>
+          <p className="text-gray-600">{worker.thaiName}</p>
+        </div>
+        
+        <div className="space-y-3">
+          <div>
+            <span className="font-semibold">เลขรับที่:</span> {worker.requestNumber}
+          </div>
+          <div>
+            <span className="font-semibold">สัญชาติ:</span> {worker.nationality}
+          </div>
+          <div>
+            <span className="font-semibold">อายุ:</span> {worker.age} ปี
+          </div>
+          <div>
+            <span className="font-semibold">วันเกิด:</span> {worker.birthDate}
+          </div>
+          <div>
+            <span className="font-semibold">เลขประจำตัว:</span> {worker.personalID}
+          </div>
+          <div>
+            <span className="font-semibold">เลขอ้างอิง:</span> {worker.alienReferenceNumber}
+          </div>
+        </div>
+        
+        <div className="mt-6 text-center">
+          <button 
+            onClick={() => router.push(`/?id=${worker.requestNumber}`)}
+            className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            ดูเอกสารฉบับเต็ม
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+[
+  {
+    "requestNumber": "WP-67-009630",
+    "englishName": "MISS EI YE PYAN",
+    "profileImage": "",
+    "thaiName": "นางสาวเอ ยี เปียน",
+    "age": "25",
+    "alienReferenceNumber": "2492100646840",
+    "personalID": "6682190049543",
+    "nationality": "เมียนมา",
+    "workPermitNumber": "WP-67-009630",
+    "birthDate": "15/03/1999"
+  }
+]
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, Segoe UI, Roboto,
+    Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* สำหรับโหลดฟอนต์ไทย THSarabunPSK */
+@font-face {
+  font-family: 'THSarabunPSK';
+  src: url('https://oldqifkvaagtseibueaf.supabase.co/storage/v1/object/public/zzoo/ozz/ss-thsbn.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'THSarabunPSK';
+  src: url('https://oldqifkvaagtseibueaf.supabase.co/storage/v1/object/public/zzoo/ozz/ss-thsbn-bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
