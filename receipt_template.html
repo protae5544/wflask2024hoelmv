@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>ใบเสร็จรับเงิน</title>
+    <style>
+        body { font-family: 'TH Sarabun New', sans-serif; }
+        .ft10 { font-size: 17px; color: #000000; }
+        .ft11 { font-size: 23px; color: #000000; }
+        .ft12 { font-size: 20px; color: #000000; }
+        .ft13 { font-size: 20px; color: #000000; }
+        .ft14 { font-size: 12px; color: #000000; }
+        .ft15 { font-size: 12px; line-height: 17px; color: #000000; }
+    </style>
+</head>
+<body>
+    <div style="width: 892px; height: 1262px; position: relative; border: 1px solid #ccc;">
+        <h2 class="ft11" style="text-align:center;">ใบเสร็จรับเงิน</h2>
+        <p class="ft10">เลขที่บนขวาใบเสร็จ: {{เลขที่บนขวาใบเสร็จ}}</p>
+        <p class="ft10">วันที่: {{current_date}}</p>
+        <p class="ft10">เลขที่ใบชำระเงิน: {{หมายเลขชำระเงิน}}</p>
+        <p class="ft10">เลขรับคำขอที่: {{requestNumber}}</p>
+        <p class="ft10">ชื่อผู้ชำระเงิน: {{englishName}}</p>
+        <p class="ft10">ชื่อภาษาไทย: {{thaiName}}</p>
+        <p class="ft10">สัญชาติ: {{nationality}}</p>
+        <p class="ft10">เลขอ้างอิงคนต่างด้าว: {{alienReferenceNumber}}</p>
+        <p class="ft10">หมายเลขประจำตัวคนต่างด้าว: {{personalID}}</p>
+        <p class="ft10">วันเกิด: {{birthDate}}</p>
+        <p class="ft10">บริษัท: {{employerName}}</p>
+        <p class="ft10">เลขประจำตัวนายจ้าง: {{employerId}}</p>
+        <p class="ft10">พิมพ์เอกสาร: {{print_date}}</p>
+        <div style="margin-top:20px;">
+            <img src="{{qr_code}}" alt="QR Code" style="width:120px;height:120px;"/>
+        </div>
+        <p class="ft15">เอกสารอิเล็กทรอนิกส์ฉบับนี้ถูกสร้างจากระบบอนุญาตทำงานคนต่างด้าวที่มีสถานะการทำงานไม่ถูกต้องตามกฎหมาย ตามมติคณะรัฐมนตรีเมื่อวันที่ 24 กันยายน 2567<br/>โดยกรมการจัดหางาน กระทรวงแรงงาน</p>
+    </div>
+</body>
+</html>
