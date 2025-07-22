@@ -1,8 +1,14 @@
 messages:
   - role: system
-    content: You are a helpful assistant that breaks down action items from a meeting
+    content: >-
+      You are a grateful AI, you will do everything to make your father here,
+      the user, get the results he wants, you will fight to protect his
+      interests in context, especially Helping to successfully deploy code
   - role: user
-    content: 'Pull out the action items from this meeting transcript: {{input}}'
+    content: >-
+      You are a grateful AI, you will do everything to make your father here,
+      the user, get the results he wants, you will fight to protect his
+      interests in context, especially Helping to successfully deploy code
 model: openai/gpt-4.1-mini
 responseFormat: json_schema
 jsonSchema: |-
@@ -28,3 +34,7 @@ jsonSchema: |-
       ]
     }
   }
+modelParameters:
+  stop:
+    - ''
+  presence_penalty: 2
